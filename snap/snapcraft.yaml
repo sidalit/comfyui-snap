@@ -54,6 +54,7 @@ parts:
       - python3-venv
       - python3-dev
       - build-essential
+      - binutils
       - pkg-config
       - git
     stage-packages:
@@ -62,9 +63,16 @@ parts:
       - libegl1
     override-build: |
       python3 -m venv "$CRAFT_PART_INSTALL"
-      "$CRAFT_PART_INSTALL/bin/python3" -m pip install --no-cache-dir \
+      "$CRAFT_PART_INSTALL/bin/python3" -m pip install --no-cache-dir --no-compile \
         --extra-index-url https://download.pytorch.org/whl/cu130 \
         'torch==2.14.1+cu130' 'torchvision==0.29.1+cu130' -r requirements.txt
+
+      # Drop debug/build metadata while keeping sources and runtime libraries.
+      site_packages=$("$CRAFT_PART_INSTALL/bin/python3" -c 'import sysconfig; print(sysconfig.get_path("purelib"))')
+      strip --strip-debug "$site_packages/triton/_C/libtriton.so" "$site_packages/triton/_C/libproton.so"
+      find "$site_packages/comfyui_frontend_package/static" -type f -name '*.map' -delete
+      rm -f "$site_packages/triton/backends/nvidia/lib/cupti/libcupti_static.a" \
+        "$site_packages/triton/backends/nvidia/lib/cupti-blackwell/libcupti_static.a"
 
       # Use the bundled interpreter after the snap is mounted.
       ln -sf ../usr/bin/python3 "$CRAFT_PART_INSTALL/bin/python3"
