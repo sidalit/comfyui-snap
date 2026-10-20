@@ -1,0 +1,87 @@
+name: comfyui
+base: core26
+adopt-info: comfyui
+title: ComfyUI
+summary: Node-based workflows for generative AI images, video and audio
+description: |
+  ComfyUI provides a browser interface for building and running generative AI
+  workflows with local models. Models are supplied separately.
+
+  Run comfyui and open http://127.0.0.1:8188. Use comfyui --cpu on systems
+  without a compatible NVIDIA GPU. Models, inputs, outputs and settings are
+  stored in ~/snap/comfyui/common by default.
+license: GPL-3.0-or-later
+grade: stable
+confinement: strict
+website: https://www.comfy.org/
+source-code: https://github.com/Comfy-Org/ComfyUI
+issues: https://github.com/Comfy-Org/ComfyUI/issues
+contact: https://github.com/sidalit/comfyui-snap/issues
+
+platforms:
+  amd64:
+  arm64:
+
+apps:
+  comfyui:
+    command: bin/comfyui
+    plugs:
+      - home
+      - network
+      - network-bind
+      - opengl
+      - removable-media
+    environment:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONNOUSERSITE: '1'
+      XDG_CACHE_HOME: $SNAP_USER_COMMON/.cache
+      HF_HOME: $SNAP_USER_COMMON/.cache/huggingface
+      TORCH_HOME: $SNAP_USER_COMMON/.cache/torch
+      CUDA_CACHE_PATH: $SNAP_USER_COMMON/.cache/nvidia
+      LD_LIBRARY_PATH: $SNAP_LIBRARY_PATH:$SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR
+
+parts:
+  comfyui:
+    plugin: nil
+    source: https://github.com/Comfy-Org/ComfyUI.git
+    # renovate: depName=Comfy-Org/ComfyUI
+    source-tag: 'v0.42.1'
+    override-pull: |
+      craftctl default
+      version=$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
+      craftctl set version="$version"
+    build-packages:
+      - python3-venv
+      - python3-dev
+      - build-essential
+      - pkg-config
+      - git
+    stage-packages:
+      - python3-venv
+      - libgl1
+      - libegl1
+    override-build: |
+      python3 -m venv "$CRAFT_PART_INSTALL"
+      "$CRAFT_PART_INSTALL/bin/python3" -m pip install --no-cache-dir \
+        --extra-index-url https://download.pytorch.org/whl/cu130 \
+        'torch==2.14.1+cu130' 'torchvision==0.29.1+cu130' -r requirements.txt
+
+      # Use the bundled interpreter after the snap is mounted.
+      ln -sf ../usr/bin/python3 "$CRAFT_PART_INSTALL/bin/python3"
+      sed -i 's|^home = .*|home = /snap/comfyui/current/usr/bin|' "$CRAFT_PART_INSTALL/pyvenv.cfg"
+      find "$CRAFT_PART_INSTALL/bin" -type f -exec \
+        sed -i "1 s|^#!$CRAFT_PART_INSTALL/bin/python3$|#!/usr/bin/env python3|" {} +
+
+      mkdir -p "$CRAFT_PART_INSTALL/share/comfyui"
+      git -C "$CRAFT_PART_SRC" archive HEAD | tar -x -C "$CRAFT_PART_INSTALL/share/comfyui"
+      install -Dm644 LICENSE "$CRAFT_PART_INSTALL/share/doc/comfyui/LICENSE"
+    prime:
+      - -share/comfyui/.github
+      - -share/comfyui/tests
+      - -share/comfyui/tests-unit
+      - -usr/share/doc
+      - -usr/share/man
+
+  launcher:
+    plugin: dump
+    source: snap/local

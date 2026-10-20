@@ -1,0 +1,21 @@
+#!/bin/bash
+set -euo pipefail
+
+# Honour an explicitly chosen base while keeping the default writable.
+base_dir="$SNAP_USER_COMMON"
+next_is_base=false
+for arg in "$@"; do
+    if "$next_is_base"; then
+        base_dir="$arg"
+        next_is_base=false
+        continue
+    fi
+    case "$arg" in
+        --base-directory) next_is_base=true ;;
+        --base-directory=*) base_dir="${arg#*=}" ;;
+    esac
+done
+mkdir -p "$base_dir/models/checkpoints" "$base_dir/custom_nodes"
+
+exec "$SNAP/bin/python3" "$SNAP/share/comfyui/main.py" \
+    --base-directory "$SNAP_USER_COMMON" "$@"
