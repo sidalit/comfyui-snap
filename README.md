@@ -41,7 +41,7 @@ sudo snap connect comfyui:removable-media   # optional: /media, /mnt
 
 ## Update to a new upstream release
 
-Change `source-tag` in `snap/snapcraft.yaml`, then rebuild. The version is taken from the upstream project metadata.
+Change `version` in `snap/snapcraft.yaml`, then rebuild.
 
 ## Automation
 

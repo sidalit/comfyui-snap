@@ -1,6 +1,6 @@
 name: comfyui
 base: core26
-adopt-info: comfyui
+version: '0.42.1'
 title: ComfyUI
 summary: Node-based workflows for generative AI images, video and audio
 description: |
@@ -44,12 +44,7 @@ parts:
   comfyui:
     plugin: nil
     source: https://github.com/Comfy-Org/ComfyUI.git
-    # renovate: depName=Comfy-Org/ComfyUI
-    source-tag: 'v0.42.1'
-    override-pull: |
-      craftctl default
-      version=$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
-      craftctl set version="$version"
+    source-tag: v$SNAPCRAFT_PROJECT_VERSION
     build-packages:
       - python3-venv
       - python3-dev
