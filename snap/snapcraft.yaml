@@ -7,9 +7,11 @@ description: |
   ComfyUI provides a browser interface for building and running generative AI
   workflows with local models. Models are supplied separately.
 
-  Run comfyui and open http://127.0.0.1:8188. Use comfyui --cpu on systems
-  without a compatible NVIDIA GPU. Models, inputs, outputs and settings are
-  stored in ~/snap/comfyui/common by default.
+  The server starts automatically on http://127.0.0.1:8188. Models, inputs,
+  outputs and settings are stored in /var/snap/comfyui/common. Install
+  comfyui-desktop for the desktop application.
+
+  The comfyui command remains available for a separate foreground server.
 license: GPL-3.0-or-later
 grade: stable
 confinement: strict
@@ -22,6 +24,22 @@ platforms:
   amd64:
   arm64:
 
+environment:
+  PYTHONDONTWRITEBYTECODE: '1'
+  PYTHONNOUSERSITE: '1'
+  XDG_CACHE_HOME: $SNAP_USER_COMMON/.cache
+  HF_HOME: $SNAP_USER_COMMON/.cache/huggingface
+  TORCH_HOME: $SNAP_USER_COMMON/.cache/torch
+  CUDA_CACHE_PATH: $SNAP_USER_COMMON/.cache/nvidia
+  LD_LIBRARY_PATH: $SNAP_LIBRARY_PATH:$SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR
+
+slots:
+  server:
+    interface: content
+    content: comfyui-server-v1
+    read:
+      - $SNAP/share/comfyui-server
+
 apps:
   comfyui:
     command: bin/comfyui
@@ -31,14 +49,15 @@ apps:
       - network-bind
       - opengl
       - removable-media
-    environment:
-      PYTHONDONTWRITEBYTECODE: '1'
-      PYTHONNOUSERSITE: '1'
-      XDG_CACHE_HOME: $SNAP_USER_COMMON/.cache
-      HF_HOME: $SNAP_USER_COMMON/.cache/huggingface
-      TORCH_HOME: $SNAP_USER_COMMON/.cache/torch
-      CUDA_CACHE_PATH: $SNAP_USER_COMMON/.cache/nvidia
-      LD_LIBRARY_PATH: $SNAP_LIBRARY_PATH:$SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR
+
+  daemon:
+    command: bin/comfyui-server
+    daemon: simple
+    restart-condition: on-failure
+    plugs:
+      - network
+      - network-bind
+      - opengl
 
 parts:
   comfyui:
@@ -57,7 +76,7 @@ parts:
       - libgl1
       - libegl1
     override-build: |
-      python3 -m venv "$CRAFT_PART_INSTALL"
+      /usr/bin/python3 -m venv "$CRAFT_PART_INSTALL"
       "$CRAFT_PART_INSTALL/bin/python3" -m pip install --no-cache-dir --no-compile \
         --extra-index-url https://download.pytorch.org/whl/cu130 \
         'torch==2.14.1+cu130' 'torchvision==0.29.1+cu130' -r requirements.txt

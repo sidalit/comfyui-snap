@@ -1,0 +1,21 @@
+#!/bin/bash
+set -euo pipefail
+umask 077
+
+export HOME="$SNAP_COMMON"
+export XDG_CACHE_HOME="$SNAP_COMMON/.cache"
+export HF_HOME="$XDG_CACHE_HOME/huggingface"
+export TORCH_HOME="$XDG_CACHE_HOME/torch"
+export CUDA_CACHE_PATH="$XDG_CACHE_HOME/nvidia"
+mkdir -p "$XDG_CACHE_HOME"
+cd "$SNAP_COMMON"
+
+set -- --base-directory "$SNAP_COMMON" --listen 127.0.0.1 --port 8188
+if [[ $(snapctl get cpu) == true ]]; then
+    set -- "$@" --cpu
+elif ! "$SNAP/bin/python3" -c 'import sys, torch; sys.exit(not torch.cuda.is_available())'; then
+    echo 'CUDA is unavailable; starting ComfyUI in CPU mode.'
+    set -- "$@" --cpu
+fi
+
+exec "$SNAP/bin/comfyui" "$@"
