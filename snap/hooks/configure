@@ -1,13 +1,51 @@
-#!/bin/sh
-set -eu
+#!/bin/bash
+set -euo pipefail
 
-cpu="$(snapctl get cpu)"
-case "$cpu" in
-  '') snapctl set cpu=false ;;
-  true|false) ;;
-  *) echo 'cpu must be true or false' >&2; exit 1 ;;
+daemon=$(snapctl get daemon)
+listen=$(snapctl get listen)
+port=$(snapctl get port)
+cpu=$(snapctl get cpu)
+daemon=${daemon:-true}
+listen=${listen:-127.0.0.1}
+port=${port:-8188}
+cpu=${cpu:-false}
+
+case "$daemon:$cpu" in
+    true:true|true:false|false:true|false:false) ;;
+    *) echo 'daemon and cpu must be true or false.' >&2; exit 1 ;;
 esac
-
-if snapctl services "$SNAP_INSTANCE_NAME.daemon" | awk 'NR > 1 {print $3}' | grep -qx active; then
-  snapctl restart "$SNAP_INSTANCE_NAME.daemon"
+if [[ ! $port =~ ^[0-9]{1,5}$ ]] || (( 10#$port < 1 || 10#$port > 65535 )); then
+    echo 'port must be an integer between 1 and 65535.' >&2
+    exit 1
 fi
+if [[ $listen == *%* ]] || ! listen=$("$SNAP/bin/python3" -c \
+    'import ipaddress, sys; print(ipaddress.ip_address(sys.argv[1]))' "$listen" 2>/dev/null); then
+    echo 'listen must be an IPv4 or IPv6 address.' >&2
+    exit 1
+fi
+
+snapctl set daemon="$daemon" listen="$listen" port="$((10#$port))" cpu="$cpu"
+service="$SNAP_INSTANCE_NAME.daemon"
+if [[ $daemon == true ]]; then
+    active=$(snapctl services "$service" | awk 'NR == 2 { print $3 }')
+    snapctl start --enable "$service"
+    if [[ $active == active ]]; then
+        snapctl restart "$service"
+    fi
+else
+    snapctl stop --disable "$service"
+fi
+
+# Share only the connection URL with the desktop.
+case "$listen" in
+    0.0.0.0) host=127.0.0.1 ;;
+    ::) host='[::1]' ;;
+    *:*) host="[$listen]" ;;
+    *) host="$listen" ;;
+esac
+install -d -m 755 "$SNAP_COMMON/server"
+url_file=$(mktemp "$SNAP_COMMON/server/.url.XXXXXX")
+trap 'rm -f "$url_file"' EXIT
+printf 'http://%s:%s\n' "$host" "$((10#$port))" > "$url_file"
+chmod 644 "$url_file"
+mv -f "$url_file" "$SNAP_COMMON/server/url"

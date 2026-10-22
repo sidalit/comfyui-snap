@@ -7,9 +7,10 @@ description: |
   ComfyUI provides a browser interface for building and running generative AI
   workflows with local models. Models are supplied separately.
 
-  The server starts automatically on http://127.0.0.1:8188. Models, inputs,
-  outputs and settings are stored in /var/snap/comfyui/common. Install
-  comfyui-desktop for the desktop application.
+  The server runs at http://127.0.0.1:8188. Startup, listening address
+  and port can be configured through snap settings. Models,
+  inputs, outputs and settings are stored in /var/snap/comfyui/common.
+  Install comfyui-desktop for the desktop application.
 
   The comfyui command remains available for a separate foreground server.
 license: GPL-3.0-or-later
@@ -38,7 +39,7 @@ slots:
     interface: content
     content: comfyui-server-v1
     read:
-      - $SNAP/share/comfyui-server
+      - $SNAP_COMMON/server
 
 apps:
   comfyui:
@@ -53,6 +54,7 @@ apps:
   daemon:
     command: bin/comfyui-server
     daemon: simple
+    install-mode: disable
     restart-condition: on-failure
     plugs:
       - network
@@ -72,6 +74,7 @@ parts:
       - pkg-config
       - git
     stage-packages:
+      - git
       - python3-venv
       - libgl1
       - libegl1
@@ -79,7 +82,8 @@ parts:
       /usr/bin/python3 -m venv "$CRAFT_PART_INSTALL"
       "$CRAFT_PART_INSTALL/bin/python3" -m pip install --no-cache-dir --no-compile \
         --extra-index-url https://download.pytorch.org/whl/cu130 \
-        'torch==2.14.1+cu130' 'torchvision==0.29.1+cu130' -r requirements.txt
+        'torch==2.14.1+cu130' 'torchvision==0.29.1+cu130' \
+        -r requirements.txt -r manager_requirements.txt
 
       # Drop debug/build metadata while keeping sources and runtime libraries.
       site_packages=$("$CRAFT_PART_INSTALL/bin/python3" -c 'import sysconfig; print(sysconfig.get_path("purelib"))')

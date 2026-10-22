@@ -15,7 +15,8 @@ for arg in "$@"; do
         --base-directory=*) base_dir="${arg#*=}" ;;
     esac
 done
-mkdir -p "$base_dir/models/checkpoints" "$base_dir/custom_nodes"
+mkdir -p "$base_dir/models" "$base_dir/custom_nodes"
 
 exec "$SNAP/bin/python3" "$SNAP/share/comfyui/main.py" \
+    --enable-manager --enable-manager-legacy-ui \
     --base-directory "$SNAP_USER_COMMON" "$@"

@@ -10,7 +10,9 @@ export CUDA_CACHE_PATH="$XDG_CACHE_HOME/nvidia"
 mkdir -p "$XDG_CACHE_HOME"
 cd "$SNAP_COMMON"
 
-set -- --base-directory "$SNAP_COMMON" --listen 127.0.0.1 --port 8188
+listen=$(snapctl get listen)
+port=$(snapctl get port)
+set -- --base-directory "$SNAP_COMMON" --listen "${listen:-127.0.0.1}" --port "${port:-8188}"
 if [[ $(snapctl get cpu) == true ]]; then
     set -- "$@" --cpu
 elif ! "$SNAP/bin/python3" -c 'import sys, torch; sys.exit(not torch.cuda.is_available())'; then
