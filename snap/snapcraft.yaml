@@ -43,6 +43,12 @@ environment:
   CUDA_CACHE_PATH: $SNAP_USER_COMMON/.cache/nvidia
   LD_LIBRARY_PATH: $SNAP_LIBRARY_PATH:$SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR
 
+hooks:
+  configure:
+    plugs:
+      # For GPU detection through PCI vendor IDs
+      - opengl
+
 slots:
   server:
     interface: content

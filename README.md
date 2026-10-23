@@ -21,11 +21,12 @@ sudo snap install comfyui
 sudo snap services comfyui
 ```
 
-The server starts automatically at <http://127.0.0.1:8188>. With the `torch-cuda` component it uses a compatible NVIDIA GPU; otherwise it runs in CPU mode.
+The server starts automatically at <http://127.0.0.1:8188>. With the `torch-cuda` component it uses a compatible NVIDIA GPU; otherwise it runs in CPU mode. The `accelerator` option adds or removes the component, and the server waits for it before starting.
 
 ```bash
-sudo snap install comfyui+torch-cuda   # add NVIDIA GPU support
-sudo snap remove comfyui+torch-cuda    # CPU mode only
+sudo snap set comfyui accelerator=auto   # default: CUDA when an NVIDIA GPU is detected
+sudo snap set comfyui accelerator=cuda   # always add torch-cuda
+sudo snap set comfyui accelerator=cpu    # CPU mode; removes torch-cuda
 ```
 
 ```bash
@@ -33,8 +34,6 @@ sudo snap set comfyui daemon=true   # default: start now and on boot
 sudo snap set comfyui daemon=false  # stop and disable automatic startup
 sudo snap start comfyui.daemon      # start manually while automatic startup is disabled
 sudo snap set comfyui listen=127.0.0.1 port=8188
-sudo snap set comfyui cpu=true    # force CPU mode
-sudo snap set comfyui cpu=false   # automatic GPU/CPU selection
 sudo snap get comfyui
 sudo snap logs comfyui.daemon
 ```

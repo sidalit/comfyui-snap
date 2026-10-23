@@ -1,0 +1,17 @@
+#!/bin/bash
+set -euo pipefail
+
+# Print the PyTorch build to use, cuda or cpu, for the accelerator option.
+accelerator=${1-$(snapctl get accelerator)}
+case "${accelerator:-auto}" in
+    cpu | cuda) echo "$accelerator" ;;
+    auto)
+        # NVIDIA GPUs have PCI vendor ID 0x10de.
+        if grep -qsx 0x10de /sys/bus/pci/devices/*/vendor; then
+            echo cuda
+        else
+            echo cpu
+        fi
+        ;;
+    *) echo 'accelerator must be auto, cpu or cuda.' >&2; exit 1 ;;
+esac

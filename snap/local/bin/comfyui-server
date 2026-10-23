@@ -13,7 +13,20 @@ cd "$SNAP_COMMON"
 listen=$(snapctl get listen)
 port=$(snapctl get port)
 set -- --base-directory "$SNAP_COMMON" --listen "${listen:-127.0.0.1}" --port "${port:-8188}"
-if [[ $(snapctl get cpu) == true ]]; then
+build=$("$SNAP/bin/accelerator")
+
+# snapd adds torch-cuda after the hook that requests it; wait up to an hour.
+if [[ $build == cuda ]]; then
+    for _ in {1..360}; do
+        [[ ! -d $SNAP_COMPONENTS/torch-cuda ]] || break
+        echo 'Waiting for the torch-cuda component (set accelerator=cpu to skip)...'
+        sleep 10
+    done
+fi
+
+if [[ $build == cpu ]]; then
+    # Keep CPU mode off the component, which snapd may be removing.
+    unset PYTHONPATH
     set -- "$@" --cpu
 elif ! "$SNAP/bin/python3" -c 'import sys, torch; sys.exit(not torch.cuda.is_available())'; then
     echo 'CUDA is unavailable; starting ComfyUI in CPU mode.'

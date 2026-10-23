@@ -4,16 +4,21 @@ set -euo pipefail
 daemon=$(snapctl get daemon)
 listen=$(snapctl get listen)
 port=$(snapctl get port)
-cpu=$(snapctl get cpu)
+accelerator=$(snapctl get accelerator)
 daemon=${daemon:-true}
 listen=${listen:-127.0.0.1}
 port=${port:-8188}
-cpu=${cpu:-false}
+# accelerator replaces the cpu option.
+if [[ -z $accelerator && $(snapctl get cpu) == true ]]; then
+    accelerator=cpu
+fi
+accelerator=${accelerator:-auto}
 
-case "$daemon:$cpu" in
-    true:true|true:false|false:true|false:false) ;;
-    *) echo 'daemon and cpu must be true or false.' >&2; exit 1 ;;
-esac
+if [[ $daemon != true && $daemon != false ]]; then
+    echo 'daemon must be true or false.' >&2
+    exit 1
+fi
+build=$("$SNAP/bin/accelerator" "$accelerator")
 if [[ ! $port =~ ^[0-9]{1,5}$ ]] || (( 10#$port < 1 || 10#$port > 65535 )); then
     echo 'port must be an integer between 1 and 65535.' >&2
     exit 1
@@ -24,7 +29,18 @@ if [[ $listen == *%* ]] || ! listen=$("$SNAP/bin/python3" -c \
     exit 1
 fi
 
-snapctl set daemon="$daemon" listen="$listen" port="$((10#$port))" cpu="$cpu"
+snapctl set daemon="$daemon" listen="$listen" port="$((10#$port))" accelerator="$accelerator"
+snapctl unset cpu
+
+# Add or remove CUDA PyTorch; snapd applies the change after this hook.
+if [[ $build == cuda && ! -d $SNAP_COMPONENTS/torch-cuda ]]; then
+    snapctl install +torch-cuda ||
+        echo "Could not add NVIDIA GPU support; run: sudo snap install $SNAP_INSTANCE_NAME+torch-cuda" >&2
+elif [[ $build == cpu && -d $SNAP_COMPONENTS/torch-cuda ]]; then
+    snapctl remove +torch-cuda ||
+        echo "Could not remove torch-cuda; run: sudo snap remove $SNAP_INSTANCE_NAME+torch-cuda" >&2
+fi
+
 service="$SNAP_INSTANCE_NAME.daemon"
 if [[ $daemon == true ]]; then
     active=$(snapctl services "$service" | awk 'NR == 2 { print $3 }')
