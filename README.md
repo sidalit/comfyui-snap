@@ -40,7 +40,7 @@ sudo snap logs comfyui.daemon
 
 Closing the desktop leaves the server running; opening it cannot start a stopped server.
 
-Models are not included. Download them from [Comfy Desktop](https://github.com/sidalit/comfyui-desktop-snap) or the browser:
+Models are not included. Download them from [Comfy Desktop](https://github.com/sidalit/comfy-desktop-snap) or the browser:
 
 1. Open **Manager → Model Manager**.
 2. Search for a model and click **Install**.
@@ -55,7 +55,7 @@ sudo mkdir -p /var/snap/comfyui/common/models/checkpoints
 sudo cp model.safetensors /var/snap/comfyui/common/models/checkpoints/
 ```
 
-For the desktop application, install [comfyui-desktop](https://github.com/sidalit/comfyui-desktop-snap); it uses the server's configured address and port when launched. Reopen it after changing these settings.
+For the desktop application, install [comfy-desktop](https://github.com/sidalit/comfy-desktop-snap); it uses the server's configured address and port when launched. Reopen it after changing these settings.
 
 The foreground command keeps its own data in `~/snap/comfyui/common`. Use another port while the service is running:
 

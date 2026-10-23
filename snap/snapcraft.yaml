@@ -12,15 +12,19 @@ description: |
   The server runs at http://127.0.0.1:8188. Startup, listening address
   and port can be configured through snap settings. Models,
   inputs, outputs and settings are stored in /var/snap/comfyui/common.
-  Install comfyui-desktop for the desktop application.
+  Install comfy-desktop for the desktop application.
 
   The comfyui command remains available for a separate foreground server.
 license: GPL-3.0-or-later
 grade: stable
 confinement: strict
 website: https://www.comfy.org/
-source-code: https://github.com/Comfy-Org/ComfyUI
-issues: https://github.com/Comfy-Org/ComfyUI/issues
+source-code:
+  - https://github.com/Comfy-Org/ComfyUI
+  - https://github.com/sidalit/comfyui-snap
+issues:
+  - https://github.com/Comfy-Org/ComfyUI/issues
+  - https://github.com/sidalit/comfyui-snap/issues
 contact: https://github.com/sidalit/comfyui-snap/issues
 
 assumes:
