@@ -21,7 +21,12 @@ sudo snap install comfyui
 sudo snap services comfyui
 ```
 
-The server starts automatically at <http://127.0.0.1:8188>. It uses a compatible NVIDIA GPU when available and otherwise falls back to CPU mode.
+The server starts automatically at <http://127.0.0.1:8188>. With the `torch-cuda` component it uses a compatible NVIDIA GPU; otherwise it runs in CPU mode.
+
+```bash
+sudo snap install comfyui+torch-cuda   # add NVIDIA GPU support
+sudo snap remove comfyui+torch-cuda    # CPU mode only
+```
 
 ```bash
 sudo snap set comfyui daemon=true   # default: start now and on boot
@@ -65,7 +70,7 @@ Existing per-user data is preserved; copy any models you want the service to use
 
 ## Known limitations
 
-- GPU mode uses CUDA 13.0 and needs a compatible NVIDIA GPU and host driver. AMD ROCm, Intel GPU and Jetson-specific runtimes are not included; CPU mode is slow.
+- GPU mode uses CUDA 13.0 and needs a compatible NVIDIA GPU, host driver and snapd 2.68 or later. AMD ROCm, Intel GPU and Jetson-specific runtimes are not included; CPU mode is slow.
 - The service uses its own data directory. Home folders and connected removable storage are available to the foreground command.
 - Model Manager installs models from its catalogue. Downloads work with the default localhost listener; other listening addresses follow Manager's security restrictions.
 - Custom nodes can use bundled dependencies. Installing extra Python packages, runtime compilation (such as `torch.compile`) and arbitrary host programs are not supported.

@@ -7,6 +7,8 @@ description: |
   ComfyUI provides a browser interface for building and running generative AI
   workflows with local models. Models are supplied separately.
 
+  NVIDIA GPU support is provided by the torch-cuda component.
+
   The server runs at http://127.0.0.1:8188. Startup, listening address
   and port can be configured through snap settings. Models,
   inputs, outputs and settings are stored in /var/snap/comfyui/common.
@@ -21,11 +23,18 @@ source-code: https://github.com/Comfy-Org/ComfyUI
 issues: https://github.com/Comfy-Org/ComfyUI/issues
 contact: https://github.com/sidalit/comfyui-snap/issues
 
+assumes:
+  - snapd2.68 # for components support
+
 platforms:
   amd64:
   arm64:
 
 environment:
+  # Path to access current revision of components
+  SNAP_COMPONENTS: /snap/$SNAP_INSTANCE_NAME/components/$SNAP_REVISION
+  # Prefer the CUDA build of PyTorch when the torch-cuda component is installed
+  PYTHONPATH: /snap/$SNAP_INSTANCE_NAME/components/$SNAP_REVISION/torch-cuda/site-packages
   PYTHONDONTWRITEBYTECODE: '1'
   PYTHONNOUSERSITE: '1'
   XDG_CACHE_HOME: $SNAP_USER_COMMON/.cache
@@ -80,17 +89,15 @@ parts:
       - libegl1
     override-build: |
       /usr/bin/python3 -m venv "$CRAFT_PART_INSTALL"
+      # CPU build of PyTorch; keep the versions in sync with the torch-cuda part.
       "$CRAFT_PART_INSTALL/bin/python3" -m pip install --no-cache-dir --no-compile \
-        --extra-index-url https://download.pytorch.org/whl/cu130 \
-        'torch==2.14.1+cu130' 'torchvision==0.29.1+cu130' \
+        --extra-index-url https://download.pytorch.org/whl/cpu \
+        'torch==2.14.1+cpu' 'torchvision==0.29.1+cpu' \
         -r requirements.txt -r manager_requirements.txt
 
-      # Drop debug/build metadata while keeping sources and runtime libraries.
+      # Drop build metadata while keeping sources and runtime libraries.
       site_packages=$("$CRAFT_PART_INSTALL/bin/python3" -c 'import sysconfig; print(sysconfig.get_path("purelib"))')
-      strip --strip-debug "$site_packages/triton/_C/libtriton.so" "$site_packages/triton/_C/libproton.so"
       find "$site_packages/comfyui_frontend_package/static" -type f -name '*.map' -delete
-      rm -f "$site_packages/triton/backends/nvidia/lib/cupti/libcupti_static.a" \
-        "$site_packages/triton/backends/nvidia/lib/cupti-blackwell/libcupti_static.a"
 
       # Use the bundled interpreter after the snap is mounted.
       ln -sf ../usr/bin/python3 "$CRAFT_PART_INSTALL/bin/python3"
@@ -108,6 +115,45 @@ parts:
       - -usr/share/doc
       - -usr/share/man
 
+  # The component only adds what the base snap lacks: the CUDA builds of torch
+  # and torchvision, Triton and the NVIDIA libraries.
+  torch-cuda:
+    after: [comfyui]
+    plugin: nil
+    build-packages:
+      - python3-venv
+      - binutils
+    override-build: |
+      /usr/bin/python3 -m venv "$CRAFT_PART_BUILD/venv"
+      target="$CRAFT_PART_INSTALL/site-packages"
+      "$CRAFT_PART_BUILD/venv/bin/python3" -m pip install --no-cache-dir --no-compile \
+        --target "$target" \
+        --extra-index-url https://download.pytorch.org/whl/cu130 \
+        'torch==2.14.1+cu130' 'torchvision==0.29.1+cu130'
+      rm -rf "$target/bin"
+
+      # Remove dependencies already in the base snap.
+      base=$(echo "$CRAFT_STAGE"/lib/python3*/site-packages)
+      for path in "$target"/*; do
+        case "${path##*/}" in
+          torch | torch-* | torchvision*) ;;
+          *) [ ! -e "$base/${path##*/}" ] || rm -rf "$path" ;;
+        esac
+      done
+
+      # Drop debug symbols and static libraries.
+      strip --strip-debug "$target/triton/_C/libtriton.so" "$target/triton/_C/libproton.so"
+      rm -f "$target/triton/backends/nvidia/lib/cupti/libcupti_static.a" \
+        "$target/triton/backends/nvidia/lib/cupti-blackwell/libcupti_static.a"
+    organize:
+      "*": (component/torch-cuda)
+
   launcher:
     plugin: dump
     source: snap/local
+
+components:
+  torch-cuda:
+    type: standard
+    summary: PyTorch with CUDA 13.0 for NVIDIA GPUs
+    description: CUDA builds of PyTorch, torchvision and Triton with the NVIDIA runtime libraries
