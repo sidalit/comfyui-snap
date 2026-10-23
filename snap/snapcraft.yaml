@@ -130,13 +130,15 @@ parts:
       - python3-venv
       - binutils
     override-build: |
+      # Install into a venv, which unpacks wheels in place; pip --target would
+      # first unpack everything in /tmp, a small tmpfs.
       /usr/bin/python3 -m venv "$CRAFT_PART_BUILD/venv"
-      target="$CRAFT_PART_INSTALL/site-packages"
       "$CRAFT_PART_BUILD/venv/bin/python3" -m pip install --no-cache-dir --no-compile \
-        --target "$target" \
         --extra-index-url https://download.pytorch.org/whl/cu130 \
         'torch==2.14.1+cu130' 'torchvision==0.29.1+cu130'
-      rm -rf "$target/bin"
+      target="$CRAFT_PART_INSTALL/site-packages"
+      rm -rf "$target"
+      mv "$CRAFT_PART_BUILD/venv"/lib/python3*/site-packages "$target"
 
       # Remove dependencies already in the base snap.
       base=$(echo "$CRAFT_STAGE"/lib/python3*/site-packages)
