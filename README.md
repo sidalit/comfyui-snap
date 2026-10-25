@@ -1,89 +1,85 @@
-# ComfyUI snap
+<div align="center">
+
+<img src="snap/gui/comfyui.png" alt="ComfyUI logo" width="128" />
+
+# ComfyUI
+
+**Create images, video and audio with node-based AI workflows.**
 
 [![comfyui](https://snapcraft.io/comfyui/badge.svg)](https://snapcraft.io/comfyui)
+[![Base: core26](https://img.shields.io/badge/Base-core26-2C8C3C?logo=canonical&logoColor=white)](https://snapcraft.io/core26)
+![Confinement: strict](https://img.shields.io/badge/Confinement-strict-2C8C3C)
+[![Maintainer: sidaliteir](https://img.shields.io/badge/Maintainer-sidaliteir-2C8C3C?logo=snapcraft&logoColor=white)](https://snapcraft.io/publisher/sidaliteir)
+![Architectures: amd64 and arm64](https://img.shields.io/badge/Architectures-amd64%20%7C%20arm64-2C8C3C?logo=linux&logoColor=white)
 
-Snap packaging for [ComfyUI](https://github.com/Comfy-Org/ComfyUI), a node-based interface for generative AI images, video and audio.
+[Getting Started](#getting-started) · [Configure](#configure) · [Limitations](#limitations) · [Build](#build) · [Support](#support) · [License](#license)
 
-Unofficial build, not affiliated with or endorsed by the ComfyUI project.
+Unofficial snap packaging for [ComfyUI](https://github.com/Comfy-Org/ComfyUI), a generative AI server with a browser interface and optional NVIDIA GPU acceleration.
 
-## Build
+</div>
 
-```bash
-snapcraft pack
-```
+---
 
-## Install and try
+## Getting Started
 
 <a href="https://snapcraft.io/comfyui"><img alt="Get it from the Snap Store" src="https://snapcraft.io/en/dark/install.svg" width="180"></a>
 
 ```bash
 sudo snap install comfyui
-sudo snap services comfyui
 ```
 
-The server starts automatically at <http://127.0.0.1:8188>. With the `torch-cuda` component it uses a compatible NVIDIA GPU; otherwise it runs in CPU mode. The `accelerator` option adds or removes the component, and the server waits for it before starting.
+The server starts automatically at <http://127.0.0.1:8188>. You can also connect using [Comfy Desktop](https://github.com/sidalit/comfy-desktop-snap).
+
+Models are downloaded separately: open **Manager → Model Manager**, select **Install**, then refresh the model list. Downloads are stored in `/var/snap/comfyui/common/models`.
+
+## Configure
+
+| Option | Accepted values | Default |
+| --- | --- | --- |
+| `daemon` | `true`, `false` | `true`: start now and on boot. |
+| `listen` | IPv4 or IPv6 address, without a zone identifier. | `127.0.0.1` |
+| `port` | Integer from `1` to `65535`. | `8188` |
+| `accelerator` | `auto`, `cpu`, `cuda` | `auto`: request CUDA when an NVIDIA GPU is detected; otherwise use CPU. |
 
 ```bash
-sudo snap set comfyui accelerator=auto   # default: CUDA when an NVIDIA GPU is detected
-sudo snap set comfyui accelerator=cuda   # always add torch-cuda
-sudo snap set comfyui accelerator=cpu    # CPU mode; removes torch-cuda
-```
-
-```bash
-sudo snap set comfyui daemon=true   # default: start now and on boot
-sudo snap set comfyui daemon=false  # stop and disable automatic startup
-sudo snap start comfyui.daemon      # start manually while automatic startup is disabled
+sudo snap set comfyui accelerator=cpu
 sudo snap set comfyui listen=127.0.0.1 port=8188
 sudo snap get comfyui
 sudo snap logs comfyui.daemon
 ```
 
-Closing the desktop leaves the server running; opening it cannot start a stopped server.
-
-Models are not included. Download them from [Comfy Desktop](https://github.com/sidalit/comfy-desktop-snap) or the browser:
-
-1. Open **Manager → Model Manager**.
-2. Search for a model and click **Install**.
-3. Click **Refresh**, then select the model in your workflow.
-
-The server downloads models into `/var/snap/comfyui/common/models` automatically. No folder selection or permission setup is needed. Use Model Manager; ordinary workflow download links save files to your computer instead.
-
-You can also copy models manually, including over SSH:
+The accelerator setting adds or removes the `torch-cuda` component. Initial GPU startup waits for its download; the server uses CPU if CUDA is unavailable. To start the service manually instead of automatically:
 
 ```bash
-sudo mkdir -p /var/snap/comfyui/common/models/checkpoints
-sudo cp model.safetensors /var/snap/comfyui/common/models/checkpoints/
+sudo snap set comfyui daemon=false
+sudo snap start comfyui.daemon
 ```
 
-For the desktop application, install [comfy-desktop](https://github.com/sidalit/comfy-desktop-snap); it uses the server's configured address and port when launched. Reopen it after changing these settings.
+Service data lives in `/var/snap/comfyui/common`. The foreground command uses separate data in `~/snap/comfyui/common`; run `comfyui --cpu --port 8189` alongside the service. Optional removable-drive access for this command: `sudo snap connect comfyui:removable-media`.
 
-The foreground command keeps its own data in `~/snap/comfyui/common`. Use another port while the service is running:
+## Limitations
+
+- CUDA requires a compatible NVIDIA GPU, driver and snapd 2.68 or later. AMD ROCm, Intel GPU and Jetson-specific runtimes are not included.
+- Model Manager downloads work with the default loopback listener; other addresses follow its security restrictions.
+- Custom nodes can use bundled dependencies. Extra Python packages, runtime compilation and arbitrary host programs are unsupported.
+- The service cannot access your home or removable drives; copy models into its model directory. Ordinary browser downloads do not install models there.
+- Desktop and CLI clients cannot start a stopped server. The application and bundled frontend update through snapd.
+- The browser interface has no built-in authentication; use trusted networks only.
+
+## Build
 
 ```bash
-comfyui --cpu --port 8189
-comfyui --base-directory ~/ComfyUI --port 8189
-sudo snap connect comfyui:removable-media   # optional: /media, /mnt
+git clone https://github.com/sidalit/comfyui-snap.git
+cd comfyui-snap
+sudo snap install snapcraft --classic
+snapcraft pack
 ```
 
-Existing per-user data is preserved; copy any models you want the service to use into its model directory.
+## Support
 
-## Known limitations
-
-- GPU mode uses CUDA 13.0 and needs a compatible NVIDIA GPU, host driver and snapd 2.68 or later. AMD ROCm, Intel GPU and Jetson-specific runtimes are not included; CPU mode is slow.
-- The service uses its own data directory. Home folders and connected removable storage are available to the foreground command.
-- Model Manager installs models from its catalogue. Downloads work with the default localhost listener; other listening addresses follow Manager's security restrictions.
-- Custom nodes can use bundled dependencies. Installing extra Python packages, runtime compilation (such as `torch.compile`) and arbitrary host programs are not supported.
-- The application and bundled frontend update through snapd. `--front-end-version` cannot install a different frontend into the read-only application directory.
-- The browser interface has no built-in authentication; expose it only on a trusted network.
-
-## Update to a new upstream release
-
-Change `version` in `snap/snapcraft.yaml`, then rebuild.
-
-## Automation
-
-Builds, publishing, and dependency updates use [snap-automation](https://github.com/sidalit/snap-automation).
+- **Installation or snap issues:** [open a packaging issue](https://github.com/sidalit/comfyui-snap/issues).
+- **Application bugs:** [report them upstream](https://github.com/Comfy-Org/ComfyUI/issues).
 
 ## License
 
-The packaging is MIT-licensed (see `LICENSE`). ComfyUI is GPL-3.0-or-later-licensed; its dependencies carry their own licenses.
+Snap packaging: [MIT](https://github.com/sidalit/comfyui-snap/blob/main/LICENSE).
