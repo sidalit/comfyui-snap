@@ -1,6 +1,6 @@
 name: comfyui
 base: core26
-version: '0.42.1'
+version: '0.43.0'
 title: ComfyUI
 icon: snap/gui/comfyui.png
 summary: Node-based workflows for generative AI images, video and audio
