@@ -64,6 +64,8 @@ slots:
 apps:
   comfyui:
     command: bin/comfyui
+    environment:
+      XDG_CONFIG_HOME: $SNAP_USER_DATA/.config
     plugs:
       - home
       - network
